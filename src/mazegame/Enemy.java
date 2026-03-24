@@ -21,11 +21,21 @@ public class Enemy {
         return col;
     }
 
+    public int getDirRow() {
+        return dirRow;
+    }
+
+    public int getDirCol() {
+        return dirCol;
+    }
+
     public void move(Maze maze) {
         int newRow = row + dirRow;
         int newCol = col + dirCol;
 
-        if (newRow < 0 || newRow >= maze.getRows() || newCol < 0 || newCol >= maze.getCols() || maze.isWall(newRow, newCol)) {
+        if (newRow < 0 || newRow >= maze.getRows()
+                || newCol < 0 || newCol >= maze.getCols()
+                || maze.isWall(newRow, newCol)) {
             dirRow = -dirRow;
             dirCol = -dirCol;
 
@@ -33,7 +43,9 @@ public class Enemy {
             newCol = col + dirCol;
         }
 
-        if (newRow >= 0 && newRow < maze.getRows() && newCol >= 0 && newCol < maze.getCols() && !maze.isWall(newRow, newCol)) {
+        if (newRow >= 0 && newRow < maze.getRows()
+                && newCol >= 0 && newCol < maze.getCols()
+                && !maze.isWall(newRow, newCol)) {
             row = newRow;
             col = newCol;
         }

@@ -20,10 +20,14 @@ import java.awt.Point;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.awt.image.BufferedImage;
+import javax.imageio.ImageIO;
 public class GamePanel extends JPanel {
     private Maze maze;
     private Player player;
+    private Image enemyImage;
     private GameState gameState;
+    private int playerFacing = 1; // 1 = phải, -1 = trái
 private boolean gameRunning = false;
     private static final int TILE_SIZE = 44;
     private static final int INFO_HEIGHT = 70;
@@ -45,7 +49,7 @@ private Timer enemyTimer;
 
         playerImage = loadPlayerImage();
         gameState = new GameState();
-
+enemyImage = loadEnemyImage();
         startSampleFromLevel1();
         setupKeyBindings();
     }
@@ -165,23 +169,29 @@ private Timer enemyTimer;
         });
     }
 
-    private void movePlayer(int dRow, int dCol) {
-        if (gameState.isWon() || animating) return;
+   private void movePlayer(int dRow, int dCol) {
+    if (gameState.isWon() || animating) return;
 
-        int newRow = player.getRow() + dRow;
-        int newCol = player.getCol() + dCol;
+    int newRow = player.getRow() + dRow;
+    int newCol = player.getCol() + dCol;
 
-        if (newRow < 0 || newRow >= maze.getRows() || newCol < 0 || newCol >= maze.getCols()) {
-            return;
-        }
-
-        if (maze.isWall(newRow, newCol)) {
-            return;
-        }
-
-        gameState.increaseSteps();
-        animateMove(player.getRow(), player.getCol(), newRow, newCol);
+    if (newRow < 0 || newRow >= maze.getRows() || newCol < 0 || newCol >= maze.getCols()) {
+        return;
     }
+
+    if (maze.isWall(newRow, newCol)) {
+        return;
+    }
+
+    if (dCol > 0) {
+        playerFacing = 1;
+    } else if (dCol < 0) {
+        playerFacing = -1;
+    }
+
+    gameState.increaseSteps();
+    animateMove(player.getRow(), player.getCol(), newRow, newCol);
+}
 
     private void animateMove(int oldRow, int oldCol, int newRow, int newCol) {
         animating = true;
@@ -304,6 +314,18 @@ private Image loadPlayerImage() {
     System.out.println("Dang dung fallback player");
     return createFallbackPlayerImage();
 }
+private Image loadEnemyImage() {
+    try {
+        java.io.File file = new java.io.File("src/image/enemy.png");
+        if (file.exists()) {
+            return ImageIO.read(file);
+        }
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+
+    return createFallbackEnemyImage();
+}
 
     private Image createFallbackPlayerImage() {
         BufferedImage img = new BufferedImage(96, 96, BufferedImage.TYPE_INT_ARGB);
@@ -331,7 +353,28 @@ private Image loadPlayerImage() {
         g2.dispose();
         return img;
     }
+private Image createFallbackEnemyImage() {
+    BufferedImage img = new BufferedImage(96, 96, BufferedImage.TYPE_INT_ARGB);
+    Graphics2D g2 = img.createGraphics();
+    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
+    g2.setColor(new Color(231, 76, 60));
+    g2.fillOval(10, 10, 76, 76);
+
+    g2.setColor(Color.WHITE);
+    g2.fillOval(26, 28, 12, 12);
+    g2.fillOval(58, 28, 12, 12);
+
+    g2.setColor(Color.BLACK);
+    g2.fillOval(30, 32, 5, 5);
+    g2.fillOval(62, 32, 5, 5);
+
+    g2.setColor(new Color(120, 0, 0));
+    g2.fillArc(30, 44, 34, 18, 180, 180);
+
+    g2.dispose();
+    return img;
+}
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -452,23 +495,35 @@ drawCoins(g2, boardX, boardY);
     int px = boardX + (int) Math.round(renderCol * TILE_SIZE);
     int py = boardY + (int) Math.round(renderRow * TILE_SIZE);
 
-    int drawSize = TILE_SIZE - 6;   // ảnh to gần full ô
+    int drawSize = TILE_SIZE + 12;
     int offsetX = (TILE_SIZE - drawSize) / 2;
     int offsetY = (TILE_SIZE - drawSize) / 2;
+
+    int x = px + offsetX;
+    int y = py + offsetY;
 
     // bóng dưới chân
     g2.setColor(new Color(0, 0, 0, 30));
     g2.fillOval(px + 10, py + TILE_SIZE - 10, TILE_SIZE - 20, 10);
 
-    // vẽ ảnh player
-    g2.drawImage(
-            playerImage,
-            px + offsetX,
-            py + offsetY,
-            drawSize,
-            drawSize,
-            null
-    );
+    // Ảnh gốc đang quay sang phải:
+    // đi phải -> vẽ bình thường
+    // đi trái -> lật ngang
+    if (playerFacing < 0) {
+        g2.drawImage(
+                playerImage,
+                x + drawSize, y,
+                -drawSize, drawSize,
+                null
+        );
+    } else {
+        g2.drawImage(
+                playerImage,
+                x, y,
+                drawSize, drawSize,
+                null
+        );
+    }
 }
 private void createEnemies() {
     enemies = new ArrayList<>();
@@ -634,22 +689,32 @@ private void checkEnemyCollision() {
         int ex = boardX + enemy.getCol() * TILE_SIZE;
         int ey = boardY + enemy.getRow() * TILE_SIZE;
 
-        g2.setColor(new Color(0, 0, 0, 25));
+        g2.setColor(new Color(0, 0, 0, 28));
         g2.fillOval(ex + 10, ey + TILE_SIZE - 10, TILE_SIZE - 20, 10);
 
-        g2.setColor(new Color(231, 76, 60));
-        g2.fillOval(ex + 7, ey + 7, TILE_SIZE - 14, TILE_SIZE - 14);
+        int drawSize = TILE_SIZE - 6;
+        int offsetX = (TILE_SIZE - drawSize) / 2;
+        int offsetY = (TILE_SIZE - drawSize) / 2;
 
-        g2.setColor(Color.WHITE);
-        g2.fillOval(ex + 13, ey + 14, 7, 7);
-        g2.fillOval(ex + 24, ey + 14, 7, 7);
+        int x = ex + offsetX;
+        int y = ey + offsetY;
 
-        g2.setColor(Color.BLACK);
-        g2.fillOval(ex + 15, ey + 16, 3, 3);
-        g2.fillOval(ex + 26, ey + 16, 3, 3);
-
-        g2.setColor(new Color(120, 0, 0));
-        g2.fillArc(ex + 13, ey + 22, 18, 10, 180, 180);
+        // dirCol > 0 nghĩa là đang đi sang phải
+        if (enemy.getDirCol() < 0) {
+            g2.drawImage(
+                    enemyImage,
+                    x + drawSize, y,
+                    -drawSize, drawSize,
+                    null
+            );
+        } else {
+            g2.drawImage(
+                    enemyImage,
+                    x, y,
+                    drawSize, drawSize,
+                    null
+            );
+        }
     }
 }
  private Set<Point> findShortestPathCells() {
@@ -826,5 +891,8 @@ private List<Point> getReachableCellsFromStart() {
     }
 
     return reachable;
+}
+public GameState getGameState() {
+    return gameState;
 }
 }

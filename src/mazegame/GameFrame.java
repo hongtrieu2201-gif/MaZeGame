@@ -84,17 +84,19 @@ public class GameFrame extends JFrame {
         toolbar.add(btnRestart);
         toolbar.add(btnExit);
 
-        ShadowPanel shadowCard = new ShadowPanel();
+       ShadowPanel shadowCard = new ShadowPanel();
 
-        JPanel inner = new JPanel(new BorderLayout());
-        inner.setOpaque(false);
-        inner.setBorder(new EmptyBorder(10, 10, 10, 10));
-        inner.add(gamePanel, BorderLayout.CENTER);
+JPanel inner = new JPanel(new BorderLayout(18, 0));
+inner.setOpaque(false);
+inner.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        shadowCard.add(inner, BorderLayout.CENTER);
+inner.add(gamePanel, BorderLayout.CENTER);
+inner.add(new SideInfoPanel(gamePanel), BorderLayout.EAST);
 
-        root.add(toolbar, BorderLayout.NORTH);
-        root.add(shadowCard, BorderLayout.CENTER);
+shadowCard.add(inner, BorderLayout.CENTER);
+
+root.add(toolbar, BorderLayout.NORTH);
+root.add(shadowCard, BorderLayout.CENTER);
 
         return root;
     }
