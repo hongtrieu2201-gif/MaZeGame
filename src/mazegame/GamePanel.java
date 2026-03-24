@@ -13,6 +13,13 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+import java.awt.Point;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.Queue;
 public class GamePanel extends JPanel {
     private Maze maze;
     private Player player;
@@ -21,7 +28,7 @@ private boolean gameRunning = false;
     private static final int TILE_SIZE = 44;
     private static final int INFO_HEIGHT = 70;
     private static final int PADDING = 20;
-
+private List<Coin> coins;
     private boolean randomMode = false;
     private boolean animating = false;
 private List<Enemy> enemies;
@@ -59,6 +66,7 @@ private Timer enemyTimer;
     stopAnimation();
 
     createEnemies();
+    createCoins();
     startEnemyTimer();
 
     updatePanelSize();
@@ -81,6 +89,7 @@ private Timer enemyTimer;
     stopAnimation();
 
     createEnemies();
+    createCoins();
     startEnemyTimer();
 
     updatePanelSize();
@@ -104,6 +113,7 @@ private Timer enemyTimer;
     stopAnimation();
 
     createEnemies();
+    createCoins();
     startEnemyTimer();
 
     updatePanelSize();
@@ -194,10 +204,18 @@ private Timer enemyTimer;
                 stopAnimation();
                 animating = false;
 
-              player.moveTo(newRow, newCol);
-renderRow = newRow;
-renderCol = newCol;
+                    player.moveTo(newRow, newCol);
+              renderRow = newRow;
+              renderCol = newCol;
 
+              checkCoinCollection(newRow, newCol);
+              checkEnemyCollision();
+
+              if (gameRunning && !gameState.isWon()) {
+                  checkWinAfterMove(newRow, newCol);
+              }
+
+              repaint();
 checkEnemyCollision();
 if (!gameState.isWon()) {
     checkWinAfterMove(newRow, newCol);
@@ -219,18 +237,34 @@ private void checkWinAfterMove(int row, int col) {
 
     gameRunning = false;
     stopEnemyTimer();
+    stopAnimation();
     gameState.setWon(true);
 
+    String starsText = gameState.getStarsText();
+
     if (randomMode) {
-        JOptionPane.showMessageDialog(this,
-                "Bạn đã thoát mê cung random!\nSố bước: " + gameState.getSteps());
+        ResultDialog.showWin(
+                this,
+                "Hoàn thành mê cung random",
+                gameState.getSteps(),
+                gameState.getCoinsCollected(),
+                gameState.getTotalCoins(),
+                starsText
+        );
         requestFocusInWindow();
         return;
     }
 
     int currentLevel = gameState.getLevel();
-    JOptionPane.showMessageDialog(this,
-            "Hoàn thành level " + currentLevel + "!\nSố bước: " + gameState.getSteps());
+
+    ResultDialog.showWin(
+            this,
+            "Hoàn thành level " + currentLevel,
+            gameState.getSteps(),
+            gameState.getCoinsCollected(),
+            gameState.getTotalCoins(),
+            starsText
+    );
 
     gameState.nextLevel();
     initSampleLevel();
@@ -351,31 +385,58 @@ private Image loadPlayerImage() {
             }
         }
 drawEnemies(g2, boardX, boardY);
+drawCoins(g2, boardX, boardY);
         drawPlayer(g2, boardX, boardY);
         g2.dispose();
     }
 
-    private void drawInfoPanel(Graphics2D g2, int x, int y, int width) {
-        g2.setColor(new Color(244, 247, 251));
-        g2.fillRoundRect(x, y, width, 40, 18, 18);
+  private void drawInfoPanel(Graphics2D g2, int x, int y, int width) {
+    g2.setColor(new Color(244, 247, 251));
+    g2.fillRoundRect(x, y, width, 56, 22, 22);
 
-        g2.setColor(new Color(223, 229, 236));
-        g2.drawRoundRect(x, y, width, 40, 18, 18);
+    g2.setColor(new Color(225, 231, 238));
+    g2.drawRoundRect(x, y, width, 56, 22, 22);
 
-        String modeText = randomMode ? "Random" : "Sample";
-        String levelText = randomMode ? "-" : String.valueOf(gameState.getLevel());
+    int badgeX = x + 14;
+    int badgeY = y + 10;
+    int gap = 10;
 
-        g2.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        g2.setColor(new Color(44, 62, 80));
-        g2.drawString(
-                "Level: " + levelText + "   |   Steps: " + gameState.getSteps() + "   |   Mode: " + modeText,
-                x + 14, y + 25
-        );
+    badgeX = drawInfoBadge(g2, badgeX, badgeY, "Level", randomMode ? "-" : String.valueOf(gameState.getLevel()), new Color(52, 152, 219));
+    badgeX += gap;
+    badgeX = drawInfoBadge(g2, badgeX, badgeY, "Steps", String.valueOf(gameState.getSteps()), new Color(142, 68, 173));
+    badgeX += gap;
+    badgeX = drawInfoBadge(g2, badgeX, badgeY, "Lives", String.valueOf(gameState.getLives()), new Color(231, 76, 60));
+    badgeX += gap;
+    badgeX = drawInfoBadge(g2, badgeX, badgeY, "Coins", gameState.getCoinsCollected() + "/" + gameState.getTotalCoins(), new Color(241, 196, 15));
+    badgeX += gap;
+    badgeX = drawInfoBadge(g2, badgeX, badgeY, "Stars", gameState.getStarsText(), new Color(243, 156, 18));
+    badgeX += gap;
+    drawInfoBadge(g2, badgeX, badgeY, "Mode", randomMode ? "Random" : "Sample", new Color(46, 204, 113));
+}
+  private int drawInfoBadge(Graphics2D g2, int x, int y, String label, String value, Color accent) {
+    String text = label + ": " + value;
 
-        g2.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        g2.setColor(new Color(115, 127, 141));
-        g2.drawString("Điều khiển: WASD hoặc phím mũi tên", x + width - 250, y + 25);
-    }
+    Font labelFont = new Font("Segoe UI", Font.BOLD, 13);
+    g2.setFont(labelFont);
+
+    FontMetrics fm = g2.getFontMetrics();
+    int width = fm.stringWidth(text) + 28;
+    int height = 34;
+
+    g2.setColor(Color.WHITE);
+    g2.fillRoundRect(x, y, width, height, 18, 18);
+
+    g2.setColor(new Color(228, 233, 239));
+    g2.drawRoundRect(x, y, width, height, 18, 18);
+
+    g2.setColor(accent);
+    g2.fillOval(x + 10, y + 10, 12, 12);
+
+    g2.setColor(new Color(44, 62, 80));
+    g2.drawString(text, x + 30, y + 22);
+
+    return x + width;
+}
 
     private void drawBoardShadow(Graphics2D g2, int x, int y, int width, int height) {
         for (int i = 0; i < 6; i++) {
@@ -523,7 +584,8 @@ private void startEnemyTimer() {
 
     enemyTimer = new Timer(350, e -> {
         if (!gameRunning) return;
-        if (gameState.isWon() || animating) return;
+        if (gameState.isWon()) return;
+        if (animating) return;
 
         if (enemies != null) {
             for (Enemy enemy : enemies) {
@@ -537,17 +599,30 @@ private void startEnemyTimer() {
 
     enemyTimer.start();
 }
- private void checkEnemyCollision() {
-     if (gameState.isWon()) return;
+private void checkEnemyCollision() {
+    if (!gameRunning) return;
+    if (gameState.isWon()) return;
     if (enemies == null || player == null) return;
 
     for (Enemy enemy : enemies) {
         if (enemy.getRow() == player.getRow() && enemy.getCol() == player.getCol()) {
+            gameRunning = false;
             stopEnemyTimer();
             stopAnimation();
 
-            JOptionPane.showMessageDialog(this, "Bạn đã bị quái bắt!");
-            restartCurrent();
+            gameState.loseLife();
+
+            if (gameState.getLives() <= 0) {
+                ResultDialog.showGameOver(this);
+                restartCurrent();
+                return;
+            }
+
+            ResultDialog.showLose(this, gameState.getLives());
+
+            resetPlayerToStart();
+            gameRunning = true;
+            startEnemyTimer();
             return;
         }
     }
@@ -629,5 +704,127 @@ public void stopGame() {
     gameRunning = false;
     stopEnemyTimer();
     stopAnimation();
+}
+private void createCoins() {
+    coins = new ArrayList<>();
+
+    int coinCount;
+    if (randomMode) {
+        coinCount = 5;
+    } else {
+        coinCount = (gameState.getLevel() == 1) ? 3 : 5;
+    }
+
+    List<Point> reachableCells = getReachableCellsFromStart();
+    Point start = maze.getStartPoint();
+    Point exit = maze.getExitPoint();
+
+    // loại bỏ Start, Exit, ô có quái
+    List<Point> validCells = new ArrayList<>();
+
+    for (Point p : reachableCells) {
+        int row = p.y;
+        int col = p.x;
+
+        if (row == start.y && col == start.x) continue;
+        if (row == exit.y && col == exit.x) continue;
+
+        boolean clashEnemy = false;
+        if (enemies != null) {
+            for (Enemy enemy : enemies) {
+                if (enemy.getRow() == row && enemy.getCol() == col) {
+                    clashEnemy = true;
+                    break;
+                }
+            }
+        }
+        if (clashEnemy) continue;
+
+        validCells.add(p);
+    }
+
+    java.util.Collections.shuffle(validCells);
+
+    for (int i = 0; i < Math.min(coinCount, validCells.size()); i++) {
+        Point p = validCells.get(i);
+        coins.add(new Coin(p.y, p.x));
+    }
+
+    gameState.setTotalCoins(coins.size());
+}
+private void checkCoinCollection(int row, int col) {
+    if (coins == null) return;
+
+    for (Coin coin : coins) {
+        if (!coin.isCollected() && coin.getRow() == row && coin.getCol() == col) {
+            coin.collect();
+            gameState.collectCoin();
+            break;
+        }
+    }
+}
+private void resetPlayerToStart() {
+    int startRow = maze.getStartPoint().y;
+    int startCol = maze.getStartPoint().x;
+
+    player.moveTo(startRow, startCol);
+    renderRow = startRow;
+    renderCol = startCol;
+
+    repaint();
+}
+private void drawCoins(Graphics2D g2, int boardX, int boardY) {
+    if (coins == null) return;
+
+    for (Coin coin : coins) {
+        if (coin.isCollected()) continue;
+
+        int x = boardX + coin.getCol() * TILE_SIZE;
+        int y = boardY + coin.getRow() * TILE_SIZE;
+
+        g2.setColor(new Color(255, 215, 0));
+        g2.fillOval(x + 12, y + 12, TILE_SIZE - 24, TILE_SIZE - 24);
+
+        g2.setColor(new Color(230, 180, 20));
+        g2.drawOval(x + 12, y + 12, TILE_SIZE - 24, TILE_SIZE - 24);
+
+        g2.setColor(new Color(255, 245, 180));
+        g2.fillOval(x + 17, y + 15, 6, 6);
+    }
+}
+private List<Point> getReachableCellsFromStart() {
+    List<Point> reachable = new ArrayList<>();
+
+    int rows = maze.getRows();
+    int cols = maze.getCols();
+
+    boolean[][] visited = new boolean[rows][cols];
+    Queue<Point> queue = new LinkedList<>();
+
+    Point start = maze.getStartPoint();
+    queue.add(new Point(start.x, start.y));
+    visited[start.y][start.x] = true;
+
+    int[] dr = {-1, 1, 0, 0};
+    int[] dc = {0, 0, -1, 1};
+
+    while (!queue.isEmpty()) {
+        Point cur = queue.poll();
+        reachable.add(new Point(cur.x, cur.y));
+
+        for (int i = 0; i < 4; i++) {
+            int nr = cur.y + dr[i];
+            int nc = cur.x + dc[i];
+
+            if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+            if (visited[nr][nc]) continue;
+            if (maze.isWall(nr, nc)) continue;
+
+            visited[nr][nc] = true;
+            queue.add(new Point(nc, nr));
+        }
+    }
+
+    return reachable;
 }
 }
