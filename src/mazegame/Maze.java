@@ -16,19 +16,19 @@ public class Maze {
 
     public void loadLevel(int level) {
         if (level == 1) {
-          loadFromStrings(new String[]{
-        "###############",
-        "#S............#",
-        "#.###.#.#####.#",
-        "#...#.#.....#.#",
-        "###.#.#####.#.#",
-        "#...#.....#.#.#",
-        "#.#######.#.#.#",
-        "#.......#.#...#",
-        "#.#####.#.###.#",
-        "#.....#.....#E#",
-        "###############"
-});
+            loadFromStrings(new String[]{
+                    "###############",
+                    "#S............#",
+                    "#.###.#.#####.#",
+                    "#...#.#.....#.#",
+                    "###.#.#####.#.#",
+                    "#...#.....#.#.#",
+                    "#.#######.#.#.#",
+                    "#.......#.#...#",
+                    "#.#####.#.###.#",
+                    "#.....#.....#E#",
+                    "###############"
+            });
         } else if (level == 2) {
             loadFromStrings(new String[]{
                     "#################",
@@ -75,14 +75,12 @@ public class Maze {
 
         for (int attempt = 0; attempt < maxAttempts; attempt++) {
             createRandomGrid();
-
             if (hasPathBFS()) {
                 valid = true;
                 break;
             }
         }
 
-        // nếu random nhiều lần vẫn lỗi thì tạo map dự phòng
         if (!valid) {
             createFallbackMaze();
         }
@@ -96,8 +94,7 @@ public class Maze {
                 if (r == 0 || r == rows - 1 || c == 0 || c == cols - 1) {
                     grid[r][c] = '#';
                 } else {
-                    // khoảng 30% là tường
-                    grid[r][c] = random.nextDouble() < 0.30 ? '#' : '.';
+                    grid[r][c] = random.nextDouble() < 0.28 ? '#' : '.';
                 }
             }
         }
@@ -105,13 +102,11 @@ public class Maze {
         start = new Point(1, 1);
         exit = new Point(cols - 2, rows - 2);
 
-        // đảm bảo vùng start và exit không bị chặn cứng
         grid[start.y][start.x] = 'S';
         grid[exit.y][exit.x] = 'E';
 
         if (isInside(1, 2)) grid[1][2] = '.';
         if (isInside(2, 1)) grid[2][1] = '.';
-
         if (isInside(rows - 2, cols - 3)) grid[rows - 2][cols - 3] = '.';
         if (isInside(rows - 3, cols - 2)) grid[rows - 3][cols - 2] = '.';
     }
@@ -196,4 +191,11 @@ public class Maze {
     public Point getExit() {
         return exit;
     }
+    public Point getStartPoint() {
+    return start;
+}
+
+public Point getExitPoint() {
+    return exit;
+}
 }

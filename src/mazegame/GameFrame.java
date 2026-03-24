@@ -5,45 +5,61 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 
 public class GameFrame extends JFrame {
-    private GamePanel gamePanel;
+    private final CardLayout cardLayout;
+    private final JPanel cards;
+    private final GamePanel gamePanel;
 
     public GameFrame() {
         setTitle("Maze Game - Java Swing");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLayout(new BorderLayout());
-        getContentPane().setBackground(new Color(236, 240, 245));
+
+        cardLayout = new CardLayout();
+        cards = new JPanel(cardLayout);
+        cards.setBackground(new Color(236, 241, 247));
 
         gamePanel = new GamePanel();
 
-        JPanel root = new JPanel(new BorderLayout(12, 12));
-        root.setBorder(new EmptyBorder(12, 12, 12, 12));
-        root.setBackground(new Color(236, 240, 245));
+        cards.add(createStartScreen(), "START");
+        cards.add(createGameScreen(), "GAME");
 
-        JPanel topPanel = new JPanel(new BorderLayout());
-        topPanel.setOpaque(false);
+        setContentPane(cards);
 
-        JLabel titleLabel = new JLabel("MAZE GAME");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        titleLabel.setForeground(new Color(35, 47, 62));
+        showStartScreen();
+        setResizable(false);
+        setVisible(true);
+    }
 
-        JLabel subTitleLabel = new JLabel("Java Swing - OOP Project");
-        subTitleLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        subTitleLabel.setForeground(new Color(110, 120, 135));
+    private JPanel createStartScreen() {
+        return new StartPanel(
+                () -> {
+                    gamePanel.startSampleFromLevel1();
+                    showGameScreen();
+                },
+                () -> {
+                    gamePanel.initRandomLevel();
+                    showGameScreen();
+                }
+        );
+    }
 
-        JPanel titlePanel = new JPanel();
-        titlePanel.setLayout(new BoxLayout(titlePanel, BoxLayout.Y_AXIS));
-        titlePanel.setOpaque(false);
-        titlePanel.add(titleLabel);
-        titlePanel.add(Box.createVerticalStrut(2));
-        titlePanel.add(subTitleLabel);
+    private JPanel createGameScreen() {
+        JPanel root = new JPanel(new BorderLayout(0, 14));
+        root.setBackground(new Color(236, 241, 247));
+        root.setBorder(new EmptyBorder(14, 14, 14, 14));
 
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        buttonPanel.setOpaque(false);
+        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        toolbar.setOpaque(false);
 
-        JButton btnSample = createStyledButton("Stave", new Color(52, 152, 219));
-        JButton btnRandom = createStyledButton("Map random", new Color(46, 204, 113));
-        JButton btnRestart = createStyledButton("Restart", new Color(243, 156, 18));
-        JButton btnExit = createStyledButton("Thoát", new Color(231, 76, 60));
+        ThemeButton btnBack = new ThemeButton("Menu", IconFactory.createBackIcon(), new Color(99, 110, 114));
+        ThemeButton btnSample = new ThemeButton("Màn Chơi", IconFactory.createMapIcon(), new Color(52, 152, 219));
+        ThemeButton btnRandom = new ThemeButton("Map random", IconFactory.createRandomIcon(), new Color(46, 204, 113));
+        ThemeButton btnRestart = new ThemeButton("Restart", IconFactory.createRestartIcon(), new Color(243, 156, 18));
+        ThemeButton btnExit = new ThemeButton("Thoát", IconFactory.createExitIcon(), new Color(231, 76, 60));
+
+      btnBack.addActionListener(e -> {
+    gamePanel.stopGame();
+    showStartScreen();
+});
 
         btnSample.addActionListener(e -> {
             gamePanel.startSampleFromLevel1();
@@ -62,41 +78,37 @@ public class GameFrame extends JFrame {
 
         btnExit.addActionListener(e -> System.exit(0));
 
-        buttonPanel.add(btnSample);
-        buttonPanel.add(btnRandom);
-        buttonPanel.add(btnRestart);
-        buttonPanel.add(btnExit);
+        toolbar.add(btnBack);
+        toolbar.add(btnSample);
+        toolbar.add(btnRandom);
+        toolbar.add(btnRestart);
+        toolbar.add(btnExit);
 
-        topPanel.add(titlePanel, BorderLayout.WEST);
-        topPanel.add(buttonPanel, BorderLayout.EAST);
+        ShadowPanel shadowCard = new ShadowPanel();
 
-        JPanel centerWrapper = new JPanel(new BorderLayout());
-        centerWrapper.setBackground(Color.WHITE);
-        centerWrapper.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(220, 225, 232), 1),
-                new EmptyBorder(10, 10, 10, 10)
-        ));
-        centerWrapper.add(gamePanel, BorderLayout.CENTER);
+        JPanel inner = new JPanel(new BorderLayout());
+        inner.setOpaque(false);
+        inner.setBorder(new EmptyBorder(10, 10, 10, 10));
+        inner.add(gamePanel, BorderLayout.CENTER);
 
-        root.add(topPanel, BorderLayout.NORTH);
-        root.add(centerWrapper, BorderLayout.CENTER);
+        shadowCard.add(inner, BorderLayout.CENTER);
 
-        add(root, BorderLayout.CENTER);
+        root.add(toolbar, BorderLayout.NORTH);
+        root.add(shadowCard, BorderLayout.CENTER);
 
-        refreshFrame();
-        setResizable(false);
-        setVisible(true);
+        return root;
     }
 
-    private JButton createStyledButton(String text, Color bgColor) {
-        JButton button = new JButton(text);
-        button.setFocusPainted(false);
-        button.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        button.setForeground(Color.WHITE);
-        button.setBackground(bgColor);
-        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        button.setBorder(new EmptyBorder(10, 18, 10, 18));
-        return button;
+    private void showStartScreen() {
+    gamePanel.stopGame();
+    cardLayout.show(cards, "START");
+    pack();
+    setLocationRelativeTo(null);
+}
+
+    private void showGameScreen() {
+        cardLayout.show(cards, "GAME");
+        refreshFrame();
     }
 
     private void refreshFrame() {
